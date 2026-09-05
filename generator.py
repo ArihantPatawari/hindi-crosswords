@@ -5,8 +5,8 @@ import grapheme
 import google.generativeai as genai
 
 # Configuration Parameters
-GEMINI_API_KEY = "PASTE_YOUR_GEMINI_API_KEY_HERE"
-WEB_APP_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE"
+GEMINI_API_KEY = "AQ.Ab8RN6Jzj0-yubrzhVBXLOWqVgwslRCt8gP6TuUj0MEZmoqMvg"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxKORN7Hmovey7kPXymG_iyTJtrT4DwVcgtd3Fje4IYnbdrTYz8c7u2PDV0eyFrA5Ktow/exec"
 genai.configure(api_key=GEMINI_API_KEY)
 
 

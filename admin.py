@@ -5,7 +5,7 @@ st.set_page_config(page_title="Admin Winner Core", layout="centered")
 st.title("📱 एडमिन पहेली डैशबोर्ड")
 st.subheader("🏆 निर्णय: पहले आओ-पहले पाओ (First Come, First Win)")
 
-SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE"
+SPREADSHEET_ID = "1vpN74SEqSQgw3LuZHhYGrigSf7l2D6rKz09jmRI5ahg"
 LATEST_SUBMISSIONS_CSV = f"https://google.com{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=Submissions"
 
 try:

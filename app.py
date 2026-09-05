@@ -4,9 +4,9 @@ import requests
 import json
 from datetime import datetime
 
-WEB_APP_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxKORN7Hmovey7kPXymG_iyTJtrT4DwVcgtd3Fje4IYnbdrTYz8c7u2PDV0eyFrA5Ktow/exec"
 # Paste your spreadsheet's unique sharing ID key string
-SPREADSHEET_ID = "YOUR_SPREADSHEET_ID_HERE"
+SPREADSHEET_ID = "1vpN74SEqSQgw3LuZHhYGrigSf7l2D6rKz09jmRI5ahg"
 SHEET_BASE = f"https://google.com{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet="
 
 st.set_page_config(page_title="शब्द पहेली प्रतियोगिता", layout="centered")
