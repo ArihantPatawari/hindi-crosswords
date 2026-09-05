@@ -39,7 +39,7 @@ if puzzle_row.empty:
     st.warning(f"पहेली संख्या {target_puzzle_id} अभी लाइव नहीं की गई है।")
     st.stop()
 
-p_meta = puzzle_row.iloc
+p_meta = puzzle_row.head(1)
 st.title(f"🧩 हिंदी शब्द पहेली — {p_meta['BookTitle']}")
 st.write("🏁 *प्रतियोगिता लाइव है! सबसे पहले सही उत्तर सबमिट करने वाले खिलाड़ी विजेता बनेंगे।*")
 

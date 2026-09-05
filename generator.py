@@ -130,7 +130,7 @@ def create_automatic_puzzle(pdf_path, book_title):
                     [str(day_number), cell_key, grid[row_idx][col_idx]])})
 
     print(f"🎉 Success! Puzzle {day_number} ('{book_title}') is now LIVE!")
-    print(f"🔗 User Link: https://streamlit.app{day_number}")
+    print(f"🔗 User Link: https://hindi-crosswords-gjv5rjuerdnpb2ccunbkg9.streamlit.app/?puzzle={day_number}")
 
 
 if __name__ == "__main__":
