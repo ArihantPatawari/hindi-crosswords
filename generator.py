@@ -7,6 +7,7 @@ import requests
 import pdfplumber
 import grapheme
 import pandas as pd
+import os
 
 #AQ.Ab8RN6L7O6zpk54r9PAxrwKxthmSTTe6JPwCDvlmN6GKJk50Zg
 """
@@ -39,20 +40,83 @@ client = genai.Client(
     api_key="AQ.Ab8RN6LcRZabDQKb-Mc8kcegNIJ0RLLjGW6PgZSAR4lkyF9APw"
 )
 
-# --- 1. AUTOMATIC ID GENERATOR ---
-def get_next_puzzle_id():
-    """Reads the current Google Sheet registry to find the next logical ID number automatically."""
-    sheet_csv_url = f"https://google.com{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PuzzlesRegistry"
-    try:
-        df = pd.read_csv(sheet_csv_url)
-        if df.empty or 'PuzzleID' not in df.columns:
-            return 1
 
-        # Convert to numeric values, drop errors, and find max number
-        existing_ids = pd.to_numeric(df['PuzzleID'], errors='coerce').dropna().astype(int).tolist()
-        return max(existing_ids) + 1 if existing_ids else 1
-    except Exception:
-        return 1
+# =====================================================================
+# FIXED OFFLINE-FALLBACK ID CALCULATOR
+# =====================================================================
+import urllib.request
+import io
+import os
+
+
+# =====================================================================
+# FIXED ID CALCULATOR (Correct Timeout Handling)
+# =====================================================================
+import os
+import io
+import urllib.request
+import json
+import pandas as pd
+
+
+# =====================================================================
+# FIXED NETWORK-RESILIENT AUTOMATIC COUNTER IDENTIFIER
+# =====================================================================
+def get_next_puzzle_id():
+    """Fetches the highest cloud entry row. Resiliently falls back to local JSON if offline."""
+    backup_file = "puzzle_id_tracker.json"
+    sheet_csv_url = f"https://google.com{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PuzzlesRegistry"
+
+    try:
+        print("🌐 Connecting to Google Sheets database server...")
+        req = urllib.request.Request(
+            sheet_csv_url,
+            headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'}
+        )
+        # 7-second strict network connection safety window
+        with urllib.request.urlopen(req, timeout=7) as response:
+            csv_data = response.read().decode('utf-8')
+
+        # Parse data vectors smoothly into data frames
+        df = pd.read_csv(io.StringIO(csv_data))
+
+        if not df.empty and 'PuzzleID' in df.columns:
+            existing_ids = pd.to_numeric(df['PuzzleID'], errors='coerce').dropna().astype(int).tolist()
+            if existing_ids:
+                next_id = max(existing_ids) + 1
+
+                # Write to local state backup to handle future network drops
+                with open(backup_file, "w") as f:
+                    json.dump({"next_id": next_id}, f)
+
+                print(f"📊 Live Sheet Synced -> Found existing IDs: {existing_ids}. Next assigned ID is {next_id}.")
+                return next_id
+
+    except Exception as network_error:
+        # Catch Errno 8 / DNS Dropouts cleanly and route to the local asset tracker
+        print(f"⚠️ Network check bypassed ({network_error}). Recovering state from local track log...")
+
+        if os.path.exists(backup_file):
+            try:
+                with open(backup_file, "r") as f:
+                    local_data = json.load(f)
+                    local_id = int(local_data.get("next_id", 1))
+                    next_id = local_id + 1
+                    # Pre-increment local index loop value for the next run
+                    with open(backup_file, "w") as f_up:
+                        json.dump({"next_id": next_id}, f_up)
+
+                    print(f"💾 Local State Sync Successful -> Next sequential Puzzle ID is {next_id}.")
+                    return next_id
+            except Exception as read_err:
+                print(f"⚠️ Local backup corrupted ({read_err}). Resetting tracker.")
+
+    # Ultimate structural fallback if it's the very first time running the setup
+    print("ℹ️ No previous histories detected. Starting puzzle indexing series at ID: 1")
+    # Pre-increment local index loop value for the next run
+    with open(backup_file, "w") as f_up:
+        json.dump({"next_id": 1}, f_up)
+    return 1
 
 
 # ==========================================

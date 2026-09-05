@@ -68,30 +68,42 @@ with col2:
         dtype = "Horizontal" if c['dir'] == 'H' else "Vertical"
         st.info(f"**#{c['id']} [{dtype}]:** {c['clue']}")
 
+
+# ==========================================
+# 🔲 RENDER THE PLAYABLE GRID (FIXED FOR 14x14)
+# ==========================================
+GRID_SIZE = 14  # <-- CRITICAL FIX: Match the generator's grid size perfectly
+
 with col1:
     st.subheader("🔲 ग्रिड (Grid)")
     user_grid_responses = {}
-    for r in range(12):
-        cols = st.columns(12)
-        for c in range(12):
-            ckey = f"cell_{r}_{c}"
+
+    # Loop through all 14 rows and 14 columns
+    for r in range(GRID_SIZE):
+        cols = st.columns(GRID_SIZE)
+        for c in range(GRID_SIZE):
+            cell_key = f"cell_{r}_{c}"
             with cols[c]:
-                if ckey not in playable_cells:
-                    st.markdown("<div style='background-color:#111; height:30px; border-radius:2px;'></div>",
-                                unsafe_allow_html=True)
+                if cell_key not in playable_cells:
+                    # Dark placeholder box for empty cells
+                    st.markdown(
+                        "<div style='background-color:#111; height:32px; border-radius:3px; margin-bottom:2px;'></div>",
+                        unsafe_allow_html=True)
                 else:
-                    # Clear matching check evaluating both row and col indexes explicitly
-                    # Using list comprehension to safely isolate string values from JSON objects
+                    # Look up if a clue line begins exactly on this boundary box
+                    # Explicitly convert to integers to ensure an exact data match
                     match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
 
-                    # If multiple clues start at the same cell intersection, merge their numbers cleanly (e.g., "2,3")
                     if match:
                         label = ",".join([str(x['id']) for x in match])
                     else:
                         label = " "
 
-                    user_grid_responses[ckey] = st.text_input(label=label, max_chars=1,
-                                                              key=f"p_{target_puzzle_id}_{r}_{c}").strip()
+                    user_grid_responses[cell_key] = st.text_input(
+                        label=label,
+                        max_chars=1,
+                        key=f"p_{target_puzzle_id}_{r}_{c}"
+                    ).strip()
 
 # --- SUBMISSION LOGIC ---
 if st.button("📤 अपना उत्तर सबमिट करें", type="primary", use_container_width=True):
