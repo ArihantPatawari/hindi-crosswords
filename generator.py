@@ -3,15 +3,42 @@ import requests
 import pdfplumber
 import grapheme
 import pandas as pd
-import google.generativeai as genai
-import argparse
+from google import genai
+from google.genai import types
+import google.genai.errors as errors
 
+
+#AQ.Ab8RN6L7O6zpk54r9PAxrwKxthmSTTe6JPwCDvlmN6GKJk50Zg
+"""
+  
+  curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent" \
+  -H 'Content-Type: application/json' \
+  -H 'X-goog-api-key: AQ.Ab8RN6LjyvO7Hi2VjuetZ_qIvd11Sgd0f7ZaMY_DoHlR_GGt0g' \
+  -X POST \
+  -d '{
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "Explain how AI works in a few words"
+          }
+        ]
+      }
+    ]
+  }'
+"""
 # Configuration Parameters
 SPREADSHEET_ID = "1vpN74SEqSQgw3LuZHhYGrigSf7l2D6rKz09jmRI5ahg"
-GEMINI_API_KEY = "AQ.Ab8RN6Jzj0-yubrzhVBXLOWqVgwslRCt8gP6TuUj0MEZmoqMvg"
+GEMINI_API_KEY = "AQ.Ab8RN6LjyvO7Hi2VjuetZ_qIvd11Sgd0f7ZaMY_DoHlR_GGt0g"
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxKORN7Hmovey7kPXymG_iyTJtrT4DwVcgtd3Fje4IYnbdrTYz8c7u2PDV0eyFrA5Ktow/exec"
-genai.configure(api_key=GEMINI_API_KEY)
+# genai.configure(api_key=GEMINI_API_KEY)
+# This creates the client and automatically detects your GEMINI_API_KEY environment variable
 
+
+# Change Line 9 to this format:
+client = genai.Client(
+    api_key="AQ.Ab8RN6LjyvO7Hi2VjuetZ_qIvd11Sgd0f7ZaMY_DoHlR_GGt0g"
+)
 
 # --- 1. AUTOMATIC ID GENERATOR ---
 def get_next_puzzle_id():
@@ -44,7 +71,7 @@ def create_automatic_puzzle(pdf_path, book_title):
             if i >= 8: break
             text += page.extract_text() or ""
 
-    model = genai.GenerativeModel('gemini-1.5-flash')
+
     prompt = f"""
     Analyze the text. Extract 4 unique keywords in pure Hindi Devanagari script (no spaces).
     Create a crossword clue for each in Hindi.
@@ -55,7 +82,28 @@ def create_automatic_puzzle(pdf_path, book_title):
     ]
     Text: {text[:4000]}
     """
-    response = model.generate_content(prompt)
+    # response = client.models.generate_content(
+    #     model='gemini-3.8-flash', #'gemini-flash-latest',  # Highly recommended current stable flash model
+    #     contents=prompt,
+    # )
+
+    try:
+        # First attempt with the target model
+        response = client.models.generate_content(
+            model='gemini-3.6-flash',
+            contents=prompt,
+        )
+    except errors.ServerError as e:
+        if "503" in str(e):
+            print("⚠️ Model busy! Falling back to backup model...")
+            # Fallback option if primary model has high demand spikes
+            response = client.models.generate_content(
+                model='gemini-3.6-pro',
+                contents=prompt,
+            )
+        else:
+            raise e
+
     clean_json = response.text.replace("```json", "").replace("```", "").strip()
     word_pairs = json.loads(clean_json)
 
@@ -87,8 +135,8 @@ def create_automatic_puzzle(pdf_path, book_title):
 
 if __name__ == "__main__":
     # Change these two variables directly inside PyCharm whenever you want to generate a new puzzle
-    TARGET_PDF = "chapter1.pdf"
-    PUZZLE_TITLE = "इतिहास: अध्याय 1"
+    TARGET_PDF = "Jain Vidya Bhag 1 Hindi.pdf"
+    PUZZLE_TITLE = "Jain Vidya Bhag 1 Hindi 1"
 
     create_automatic_puzzle(TARGET_PDF, PUZZLE_TITLE)
     # parser = argparse.ArgumentParser(description="Auto-incrementing Hindi Crossword Generator")
