@@ -2,16 +2,42 @@ import json
 import requests
 import pdfplumber
 import grapheme
+import pandas as pd
 import google.generativeai as genai
+import argparse
 
 # Configuration Parameters
+SPREADSHEET_ID = "1vpN74SEqSQgw3LuZHhYGrigSf7l2D6rKz09jmRI5ahg"
 GEMINI_API_KEY = "AQ.Ab8RN6Jzj0-yubrzhVBXLOWqVgwslRCt8gP6TuUj0MEZmoqMvg"
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxKORN7Hmovey7kPXymG_iyTJtrT4DwVcgtd3Fje4IYnbdrTYz8c7u2PDV0eyFrA5Ktow/exec"
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-def create_individual_day_puzzle(pdf_path, day_number, book_title):
+# --- 1. AUTOMATIC ID GENERATOR ---
+def get_next_puzzle_id():
+    """Reads the current Google Sheet registry to find the next logical ID number automatically."""
+    sheet_csv_url = f"https://google.com{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=PuzzlesRegistry"
+    try:
+        df = pd.read_csv(sheet_csv_url)
+        if df.empty or 'PuzzleID' not in df.columns:
+            return 1
+
+        # Convert to numeric values, drop errors, and find max number
+        existing_ids = pd.to_numeric(df['PuzzleID'], errors='coerce').dropna().astype(int).tolist()
+        if not existing_ids:
+            return 1
+        return max(existing_ids) + 1
+    except Exception:
+        # If the sheet is completely fresh and empty, start at 1
+        return 1
+
+
+def create_automatic_puzzle(pdf_path, book_title):
+    # Fetch next sequential ID automatically
+    day_number = get_next_puzzle_id()
+    print(f"🔄 Auto-Assigned Puzzle ID: {day_number}")
     print(f"⏳ Extracting textbook text from your Mac for Day {day_number}...")
+
     text = ""
     with pdfplumber.open(pdf_path) as pdf:
         for i, page in enumerate(pdf.pages):
@@ -37,7 +63,6 @@ def create_individual_day_puzzle(pdf_path, day_number, book_title):
     grid = [[' ' for _ in range(12)] for _ in range(12)]
     placed_clues = []
 
-    # Process and sort letters
     pairs = sorted(word_pairs, key=lambda x: len(list(grapheme.graphemes(x['word']))), reverse=True)
     first_letters = list(grapheme.graphemes(pairs[0]['word']))
     r, c = 5, (12 - len(first_letters)) // 2
@@ -56,9 +81,19 @@ def create_individual_day_puzzle(pdf_path, day_number, book_title):
                 requests.post(WEB_APP_URL, data={"sheetName": "AnswersMatrix", "rowData": json.dumps(
                     [str(day_number), cell_key, grid[row_idx][col_idx]])})
 
-    print(f"🎉 Success! Day {day_number} Crossword uploaded to your database reservoir.")
+    print(f"🎉 Success! Puzzle {day_number} ('{book_title}') is now LIVE!")
+    print(f"🔗 User Link: https://streamlit.app{day_number}")
 
 
 if __name__ == "__main__":
-    # Example execution format: Pass the PDF path, Day number, and Title string
-    create_individual_day_puzzle("chapter1.pdf", 1, "इतिहास: अध्याय 1")
+    # Change these two variables directly inside PyCharm whenever you want to generate a new puzzle
+    TARGET_PDF = "chapter1.pdf"
+    PUZZLE_TITLE = "इतिहास: अध्याय 1"
+
+    create_automatic_puzzle(TARGET_PDF, PUZZLE_TITLE)
+    # parser = argparse.ArgumentParser(description="Auto-incrementing Hindi Crossword Generator")
+    # parser.add_argument("--pdf", required=True, help="Name of your PDF file (e.g., chapter1.pdf)")
+    # parser.add_argument("--title", required=True, help="Crossword Title Header string")
+    #
+    # args = parser.parse_args()
+    # create_automatic_puzzle(args.pdf, args.title)
