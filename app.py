@@ -39,14 +39,24 @@ if puzzle_row.empty:
     st.warning(f"पहेली संख्या {target_puzzle_id} अभी लाइव नहीं की गई है।")
     st.stop()
 
-p_meta = puzzle_row.head(1)
-st.title(f"🧩 हिंदी शब्द पहेली — {p_meta['BookTitle']}")
-st.write("🏁 *प्रतियोगिता लाइव है! सबसे पहले सही उत्तर सबमिट करने वाले खिलाड़ी विजेता बनेंगे।*")
-
+# NEW UPDATED CODE (Type-Safe Fix)
+p_meta = puzzle_row.iloc[0] # Explicitly fetch the first matching row entry
+st.title(f"🧩 हिंदी शब्द पहेली — {str(p_meta['BookTitle'])}")
 player_name = st.text_input("अपना नाम दर्ज करें:")
 
-clues = json.loads(p_meta['CluesJSON'])
+# st.title(f"🧩 हिंदी शब्द पहेली — {p_meta['BookTitle']}")
+st.write("🏁 *प्रतियोगिता लाइव है! सबसे पहले सही उत्तर सबमिट करने वाले खिलाड़ी विजेता बनेंगे।*")
+
+# player_name = st.text_input("अपना नाम दर्ज करें:")
+
+# clues = json.loads(p_meta['CluesJSON'])
+
+clues_string = str(p_meta['CluesJSON'])
+clues = json.loads(clues_string)
+
 matrix_df = pd.read_csv(SHEET_BASE + "AnswersMatrix")
+
+
 active_matrix = matrix_df[matrix_df['PuzzleID'].astype(str) == target_puzzle_id]
 playable_cells = set(active_matrix['CellKey'].tolist())
 
