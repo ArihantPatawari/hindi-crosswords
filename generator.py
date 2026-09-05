@@ -11,9 +11,9 @@ import os
 
 #AQ.Ab8RN6L7O6zpk54r9PAxrwKxthmSTTe6JPwCDvlmN6GKJk50Zg
 """
-  curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent" \
+ curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent" \
   -H 'Content-Type: application/json' \
-  -H 'X-goog-api-key: AQ.Ab8RN6LcRZabDQKb-Mc8kcegNIJ0RLLjGW6PgZSAR4lkyF9APw' \
+  -H 'X-goog-api-key: AQ.Ab8RN6J1T_OLUH2MWu0xKY0PSkafoKwT2c7XGIB5frp2fk1BJw' \
   -X POST \
   -d '{
     "contents": [
@@ -29,7 +29,7 @@ import os
 """
 # Configuration Parameters
 SPREADSHEET_ID = "1vpN74SEqSQgw3LuZHhYGrigSf7l2D6rKz09jmRI5ahg"
-GEMINI_API_KEY = "AQ.Ab8RN6LcRZabDQKb-Mc8kcegNIJ0RLLjGW6PgZSAR4lkyF9APw"
+GEMINI_API_KEY = "AQ.Ab8RN6J1T_OLUH2MWu0xKY0PSkafoKwT2c7XGIB5frp2fk1BJw"
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxKORN7Hmovey7kPXymG_iyTJtrT4DwVcgtd3Fje4IYnbdrTYz8c7u2PDV0eyFrA5Ktow/exec"
 # genai.configure(api_key=GEMINI_API_KEY)
 # This creates the client and automatically detects your GEMINI_API_KEY environment variable
@@ -37,7 +37,7 @@ WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxKORN7Hmovey7kPXymG_iyTJ
 
 # Change Line 9 to this format:
 client = genai.Client(
-    api_key="AQ.Ab8RN6LcRZabDQKb-Mc8kcegNIJ0RLLjGW6PgZSAR4lkyF9APw"
+    api_key="AQ.Ab8RN6J1T_OLUH2MWu0xKY0PSkafoKwT2c7XGIB5frp2fk1BJw"
 )
 
 
@@ -129,9 +129,12 @@ class ProperCrosswordGenerator:
         self.grid = [[' ' for _ in range(size)] for _ in range(size)]
         self.placed_words = []  # Tracks detailed stats of successfully linked nodes
 
+    # OVERWRITE the get_letters utility helper inside generator.py
     def get_letters(self, word):
-        """Breaks Hindi words down into human-perceived Devanagari grapheme units."""
-        return list(grapheme.graphemes(word))
+        """Safely extracts full Hindi grapheme conjunct blocks (like भा, ज्ञा, म्य) as single pieces."""
+        # Ensure whitespaces are stripped to avoid cluster indexing splits
+        clean_word = str(word).strip()
+        return list(grapheme.graphemes(clean_word))
 
     def check_fit(self, letters, r, c, direction):
         """Verifies if a word can sit safely without overlapping or breaking grid rules."""

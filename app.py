@@ -92,16 +92,29 @@ with col1:
                 else:
                     # Look up if a clue line begins exactly on this boundary box
                     # Explicitly convert to integers to ensure an exact data match
+                    # match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
+                    #
+                    # if match:
+                    #     label = ",".join([str(x['id']) for x in match])
+                    # else:
+                    #     label = " "
+                    #
+                    # user_grid_responses[cell_key] = st.text_input(
+                    #     label=label,
+                    #     max_chars=1,
+                    #     key=f"p_{target_puzzle_id}_{r}_{c}"
+                    # ).strip()
+
+                    # =====================================================================
+                    # SPECIFIC FIXED GRAPHEME CELL INPUT WINDOW
+                    # =====================================================================
                     match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
+                    label = ",".join([str(x['id']) for x in match]) if match else " "
 
-                    if match:
-                        label = ",".join([str(x['id']) for x in match])
-                    else:
-                        label = " "
-
-                    user_grid_responses[cell_key] = st.text_input(
+                    # 1. Expand max_chars to 3 to accommodate Devanagari matras/halants cleanly
+                    user_grid_responses[cell_key] = cols[c].text_input(
                         label=label,
-                        max_chars=1,
+                        max_chars=3,  # <-- Change from 1 to 3 to support composite clusters
                         key=f"p_{target_puzzle_id}_{r}_{c}"
                     ).strip()
 
