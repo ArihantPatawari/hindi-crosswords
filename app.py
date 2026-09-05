@@ -80,8 +80,11 @@ with col1:
                     st.markdown("<div style='background-color:#111; height:30px; border-radius:2px;'></div>",
                                 unsafe_allow_html=True)
                 else:
-                    match = [x for x in clues if x['row'] == r and x['col'] == c]
-                    label = str(match['id']) if match else " "
+                    # match = [x for x in clues if x['row'] == r and x['col'] == c]
+                    # label = str(match['id']) if match else " "
+                    # NEW UPDATED CODE (Fixed List Indexing)
+                    match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
+                    label = str(match[0]['id']) if match else " "
                     user_grid_responses[ckey] = st.text_input(label=label, max_chars=1,
                                                               key=f"p_{target_puzzle_id}_{r}_{c}").strip()
 
