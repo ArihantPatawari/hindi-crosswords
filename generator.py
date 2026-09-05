@@ -105,52 +105,52 @@ class ProperCrosswordGenerator:
             "dir": direction
         })
 
+
     def build_interlocking_matrix(self, word_clue_pairs):
-        """Iterates over words to build an interlocking network grid."""
-        # Sort words from longest to shortest to establish a strong structural base
+        """Iterates over words to build an interlocking network grid with proper incremental IDs."""
         sorted_pairs = sorted(word_clue_pairs, key=lambda x: len(self.get_letters(x['word'])), reverse=True)
         if not sorted_pairs: return
 
-        # Place the first and longest word right across the middle horizontally (Left to Right)
+        # Place the first and longest word right across the middle horizontally
         first_word = sorted_pairs[0]['word']
         first_letters = self.get_letters(first_word)
         start_row = self.size // 2
         start_col = (self.size - len(first_letters)) // 2
 
+        # First clue gets ID 1
         self.place_word_on_grid(first_word, sorted_pairs[0]['clue'], start_row, start_col, 'H', 1)
 
-        # Interlock subsequent words dynamically
+        # CRITICAL FIX: Initialize clue counter strictly OUTSIDE all loops
         clue_counter = 2
+
         for pair in sorted_pairs[1:]:
             word = pair['word']
             clue = pair['clue']
             letters = self.get_letters(word)
             placed_successfully = False
 
-            # Check character intersections against all previously placed words
             for placed in self.placed_words:
                 placed_letters = self.get_letters(placed['word'])
 
                 for curr_idx, curr_char in enumerate(letters):
                     for pl_idx, pl_char in enumerate(placed_letters):
-
-                        # Match found! Calculate the required start coordinates
                         if curr_char == pl_char:
                             if placed['dir'] == 'H':
-                                # Intersecting vertically (Up to Down)
                                 r_try = placed['row'] - curr_idx
                                 c_try = placed['col'] + pl_idx
                                 dir_try = 'V'
                             else:
-                                # Intersecting horizontally (Left to Right)
                                 r_try = placed['row'] + pl_idx
                                 c_try = placed['col'] - curr_idx
                                 dir_try = 'H'
 
-                            # If it passes validation checks, lock it in
                             if self.check_fit(letters, r_try, c_try, dir_try):
+                                # Stamp with the unique counter ID
                                 self.place_word_on_grid(word, clue, r_try, c_try, dir_try, clue_counter)
+
+                                # INCREMENT THE COUNTER IMMEDIATELY AFTER A SUCCESSFUL PLACEMENT
                                 clue_counter += 1
+
                                 placed_successfully = True
                                 break
                     if placed_successfully: break

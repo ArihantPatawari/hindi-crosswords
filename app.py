@@ -80,11 +80,16 @@ with col1:
                     st.markdown("<div style='background-color:#111; height:30px; border-radius:2px;'></div>",
                                 unsafe_allow_html=True)
                 else:
-                    # match = [x for x in clues if x['row'] == r and x['col'] == c]
-                    # label = str(match['id']) if match else " "
-                    # NEW UPDATED CODE (Fixed List Indexing)
+                    # Clear matching check evaluating both row and col indexes explicitly
+                    # Using list comprehension to safely isolate string values from JSON objects
                     match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
-                    label = str(match[0]['id']) if match else " "
+
+                    # If multiple clues start at the same cell intersection, merge their numbers cleanly (e.g., "2,3")
+                    if match:
+                        label = ",".join([str(x['id']) for x in match])
+                    else:
+                        label = " "
+
                     user_grid_responses[ckey] = st.text_input(label=label, max_chars=1,
                                                               key=f"p_{target_puzzle_id}_{r}_{c}").strip()
 
