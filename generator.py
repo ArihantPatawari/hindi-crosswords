@@ -1,19 +1,18 @@
+
+from google import genai
+from google.genai import types
+import google.genai.errors as errors
 import json
 import requests
 import pdfplumber
 import grapheme
 import pandas as pd
-from google import genai
-from google.genai import types
-import google.genai.errors as errors
-
 
 #AQ.Ab8RN6L7O6zpk54r9PAxrwKxthmSTTe6JPwCDvlmN6GKJk50Zg
 """
-  
   curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent" \
   -H 'Content-Type: application/json' \
-  -H 'X-goog-api-key: AQ.Ab8RN6LjyvO7Hi2VjuetZ_qIvd11Sgd0f7ZaMY_DoHlR_GGt0g' \
+  -H 'X-goog-api-key: AQ.Ab8RN6LcRZabDQKb-Mc8kcegNIJ0RLLjGW6PgZSAR4lkyF9APw' \
   -X POST \
   -d '{
     "contents": [
@@ -29,7 +28,7 @@ import google.genai.errors as errors
 """
 # Configuration Parameters
 SPREADSHEET_ID = "1vpN74SEqSQgw3LuZHhYGrigSf7l2D6rKz09jmRI5ahg"
-GEMINI_API_KEY = "AQ.Ab8RN6LjyvO7Hi2VjuetZ_qIvd11Sgd0f7ZaMY_DoHlR_GGt0g"
+GEMINI_API_KEY = "AQ.Ab8RN6LcRZabDQKb-Mc8kcegNIJ0RLLjGW6PgZSAR4lkyF9APw"
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxKORN7Hmovey7kPXymG_iyTJtrT4DwVcgtd3Fje4IYnbdrTYz8c7u2PDV0eyFrA5Ktow/exec"
 # genai.configure(api_key=GEMINI_API_KEY)
 # This creates the client and automatically detects your GEMINI_API_KEY environment variable
@@ -37,7 +36,7 @@ WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxKORN7Hmovey7kPXymG_iyTJ
 
 # Change Line 9 to this format:
 client = genai.Client(
-    api_key="AQ.Ab8RN6LjyvO7Hi2VjuetZ_qIvd11Sgd0f7ZaMY_DoHlR_GGt0g"
+    api_key="AQ.Ab8RN6LcRZabDQKb-Mc8kcegNIJ0RLLjGW6PgZSAR4lkyF9APw"
 )
 
 # --- 1. AUTOMATIC ID GENERATOR ---
@@ -51,19 +50,121 @@ def get_next_puzzle_id():
 
         # Convert to numeric values, drop errors, and find max number
         existing_ids = pd.to_numeric(df['PuzzleID'], errors='coerce').dropna().astype(int).tolist()
-        if not existing_ids:
-            return 1
-        return max(existing_ids) + 1
+        return max(existing_ids) + 1 if existing_ids else 1
     except Exception:
-        # If the sheet is completely fresh and empty, start at 1
         return 1
 
 
+# ==========================================
+# 🧱 THE INTERLOCKING CROSSWORD ENGINE
+# ==========================================
+class ProperCrosswordGenerator:
+    def __init__(self, size=14):
+        self.size = size
+        # Create an empty blank grid canvas
+        self.grid = [[' ' for _ in range(size)] for _ in range(size)]
+        self.placed_words = []  # Tracks detailed stats of successfully linked nodes
+
+    def get_letters(self, word):
+        """Breaks Hindi words down into human-perceived Devanagari grapheme units."""
+        return list(grapheme.graphemes(word))
+
+    def check_fit(self, letters, r, c, direction):
+        """Verifies if a word can sit safely without overlapping or breaking grid rules."""
+        w_len = len(letters)
+
+        # 1. Verify canvas bounds
+        if direction == 'H' and (c + w_len > self.size or c < 0): return False
+        if direction == 'V' and (r + w_len > self.size or r < 0): return False
+
+        # 2. Inspect path coordinates
+        for i, char in enumerate(letters):
+            curr_r = r if direction == 'H' else r + i
+            curr_c = c + i if direction == 'H' else c
+
+            # Check for conflict with existing characters
+            if self.grid[curr_r][curr_c] != ' ' and self.grid[curr_r][curr_c] != char:
+                return False
+
+        return True
+
+    def place_word_on_grid(self, word, clue, r, c, direction, clue_id):
+        """Stamps the validated graphemes into the two-dimensional matrix array."""
+        letters = self.get_letters(word)
+        for i, char in enumerate(letters):
+            curr_r = r if direction == 'H' else r + i
+            curr_c = c + i if direction == 'H' else c
+            self.grid[curr_r][curr_c] = char
+
+        self.placed_words.append({
+            "id": clue_id,
+            "word": word,
+            "clue": clue,
+            "row": r,
+            "col": c,
+            "dir": direction
+        })
+
+    def build_interlocking_matrix(self, word_clue_pairs):
+        """Iterates over words to build an interlocking network grid."""
+        # Sort words from longest to shortest to establish a strong structural base
+        sorted_pairs = sorted(word_clue_pairs, key=lambda x: len(self.get_letters(x['word'])), reverse=True)
+        if not sorted_pairs: return
+
+        # Place the first and longest word right across the middle horizontally (Left to Right)
+        first_word = sorted_pairs[0]['word']
+        first_letters = self.get_letters(first_word)
+        start_row = self.size // 2
+        start_col = (self.size - len(first_letters)) // 2
+
+        self.place_word_on_grid(first_word, sorted_pairs[0]['clue'], start_row, start_col, 'H', 1)
+
+        # Interlock subsequent words dynamically
+        clue_counter = 2
+        for pair in sorted_pairs[1:]:
+            word = pair['word']
+            clue = pair['clue']
+            letters = self.get_letters(word)
+            placed_successfully = False
+
+            # Check character intersections against all previously placed words
+            for placed in self.placed_words:
+                placed_letters = self.get_letters(placed['word'])
+
+                for curr_idx, curr_char in enumerate(letters):
+                    for pl_idx, pl_char in enumerate(placed_letters):
+
+                        # Match found! Calculate the required start coordinates
+                        if curr_char == pl_char:
+                            if placed['dir'] == 'H':
+                                # Intersecting vertically (Up to Down)
+                                r_try = placed['row'] - curr_idx
+                                c_try = placed['col'] + pl_idx
+                                dir_try = 'V'
+                            else:
+                                # Intersecting horizontally (Left to Right)
+                                r_try = placed['row'] + pl_idx
+                                c_try = placed['col'] - curr_idx
+                                dir_try = 'H'
+
+                            # If it passes validation checks, lock it in
+                            if self.check_fit(letters, r_try, c_try, dir_try):
+                                self.place_word_on_grid(word, clue, r_try, c_try, dir_try, clue_counter)
+                                clue_counter += 1
+                                placed_successfully = True
+                                break
+                    if placed_successfully: break
+                if placed_successfully: break
+
+
+# ==========================================
+# 🚀 CORE AUTOMATION PIPELINE RUNNER
+# ==========================================
 def create_automatic_puzzle(pdf_path, book_title):
     # Fetch next sequential ID automatically
     day_number = get_next_puzzle_id()
     print(f"🔄 Auto-Assigned Puzzle ID: {day_number}")
-    print(f"⏳ Extracting textbook text from your Mac for Day {day_number}...")
+    print(f"⏳ Extracting textbook text from PDF...")
 
     text = ""
     with pdfplumber.open(pdf_path) as pdf:
@@ -107,30 +208,24 @@ def create_automatic_puzzle(pdf_path, book_title):
     clean_json = response.text.replace("```json", "").replace("```", "").strip()
     word_pairs = json.loads(clean_json)
 
-    # Calculate 12x12 Grid Layout Locations
-    grid = [[' ' for _ in range(12)] for _ in range(12)]
-    placed_clues = []
-
-    pairs = sorted(word_pairs, key=lambda x: len(list(grapheme.graphemes(x['word']))), reverse=True)
-    first_letters = list(grapheme.graphemes(pairs[0]['word']))
-    r, c = 5, (12 - len(first_letters)) // 2
-    for i, l in enumerate(first_letters): grid[r][c + i] = l
-    placed_clues.append({"id": 1, "dir": "H", "row": r, "col": c, "clue": pairs[0]['clue']})
+    # Calculate Proper Interlocking Layout
+    engine = ProperCrosswordGenerator(size=14)
+    engine.build_interlocking_matrix(word_pairs)
 
     # Sync puzzle settings directly to Google Sheet registry tab
     requests.post(WEB_APP_URL, data={"sheetName": "PuzzlesRegistry", "rowData": json.dumps(
-        [str(day_number), book_title, json.dumps(placed_clues, ensure_ascii=False)])})
+        [str(day_number), book_title, json.dumps(engine.placed_words, ensure_ascii=False)])})
 
     # Sync exact correct character tracking matrix paths
-    for row_idx in range(12):
-        for col_idx in range(12):
-            if grid[row_idx][col_idx] != ' ':
+    for row_idx in range(14):
+        for col_idx in range(14):
+            if engine.grid[row_idx][col_idx] != ' ':
                 cell_key = f"cell_{row_idx}_{col_idx}"
                 requests.post(WEB_APP_URL, data={"sheetName": "AnswersMatrix", "rowData": json.dumps(
-                    [str(day_number), cell_key, grid[row_idx][col_idx]])})
+                    [str(day_number), cell_key, engine.grid[row_idx][col_idx]])})
 
-    print(f"🎉 Success! Puzzle {day_number} ('{book_title}') is now LIVE!")
-    print(f"🔗 User Link: https://hindi-crosswords-gjv5rjuerdnpb2ccunbkg9.streamlit.app/?puzzle={day_number}")
+    print(f"\n🎉 Success! Interlocking Puzzle {day_number} ('{book_title}') is now LIVE!")
+    print(f"🔗 Distributed User Link: https://hindi-crosswords-gjv5rjuerdnpb2ccunbkg9.streamlit.app/?puzzle={day_number}")
 
 
 if __name__ == "__main__":
