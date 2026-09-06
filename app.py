@@ -20,44 +20,37 @@ st.set_page_config(page_title="शब्द पहेली प्रतिय�
 # =====================================================================
 # 📱 DEFINITIVE MOBILE & LAPTOP RESPONSIVE GLOBAL CSS
 # =====================================================================
+# =====================================================================
+# 📱 RESPONSIVE NATIVE SYMMETRIC GRID CSS OVERRIDES
+# =====================================================================
 st.markdown("""
     <style>
-    /* 1. Main Page Wrapper Styling */
-    .main .block-container {
-        padding-top: 2rem !important;
-        max-width: 600px !important; /* Perfect width reading for both mobile and laptop views */
-    }
-
-    /* 2. Style the 14x14 Crossword Blocks exclusively (Ignores other components) */
-    .element-container:has(input[key^="p_"]) {
-        min-width: 28px !important;
-    }
-
-    /* Target rows containing the grid inputs to prevent vertical stacking */
-    div[data-testid="stHorizontalBlock"]:has(input[key^="p_"]) {
+    /* 1. Prevent native column stacking on mobile viewports */
+    div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         justify-content: center !important;
-        gap: 3px !important;
+        align-items: flex-start !important;
+        gap: 2px !important;
         width: 100% !important;
-        overflow: visible !important;
     }
 
-    /* Enforce strict square cells across columns inside the crossword row blocks */
-    div[data-testid="stHorizontalBlock"]:has(input[key^="p_"]) div[data-testid="column"] {
+    /* 2. Enforce exact matching widths across columns */
+    div[data-testid="column"] {
         flex: 1 1 0% !important;
-        min-width: 28px !important;
-        max-width: 38px !important;
+        min-width: 20px !important;
+        max-width: 34px !important;
     }
 
-    /* 3. Input Text Box Sizing and Font Uniformity */
+    /* 3. Style active input cells into clean square units */
     input {
         text-align: center !important;
         font-weight: bold !important;
-        font-size: 16px !important;
+        font-size: 14px !important;
         padding: 0px !important;
-        height: 34px !important;
+        height: 28px !important;
+        width: 100% !important;
         background-color: #262730 !important;
         color: white !important;
         border: 1px solid #464855 !important;
@@ -67,27 +60,28 @@ st.markdown("""
         border-color: #ff4b4b !important;
     }
 
-    /* 4. Clue Labels Styling right on top of cells */
-    label[data-testid="stWidgetLabel"] {
-        font-size: 9px !important;
-        font-weight: bold !important;
-        color: #ff4b4b !important;
-        margin-bottom: -8px !important;
-        text-align: center !important;
-        display: block !important;
+    /* 4. Style disabled cells to render as solid black blocks */
+    input:disabled {
+        background-color: #0e1117 !important;
+        color: #0e1117 !important;
+        border: 1px solid #1c1e24 !important;
+        cursor: not-allowed !important;
     }
 
-    /* 5. Clean Filled Locked Black Cells (No hollow boxes) */
-    .mobile-black-box {
-        background-color: #0e1117;
-        height: 34px;
-        width: 100%;
-        border-radius: 4px;
-        border: 1px solid #1c1e24;
-        margin-top: 14px; /* Perfectly counter-aligns with labeled text input slots */
+    /* 5. Center and align clue number labels above cells */
+    label[data-testid="stWidgetLabel"] {
+        font-size: 8px !important;
+        font-weight: bold !important;
+        color: #ff4b4b !important;
+        margin-bottom: -10px !important;
+        text-align: center !important;
+        display: block !important;
+        height: 12px !important;
+        line-height: 12px !important;
     }
     </style>
 """, unsafe_allow_html=True)
+
 
 # =====================================================================
 # 📋 ROUTING & METADATA LOADER
@@ -138,7 +132,7 @@ for c in clues:
 st.markdown("---")
 
 # =====================================================================
-# 🔲 THE INTERLOCKING CROSSWORD MATRIX PLAYGROUND
+# 🔲 THE INTERLOCKING SYMMETRIC CROSSWORD MATRIX PLAYGROUND
 # =====================================================================
 matrix_df = pd.read_csv(SHEET_BASE + "AnswersMatrix")
 active_matrix = matrix_df[matrix_df['PuzzleID'].astype(str) == target_puzzle_id]
@@ -149,25 +143,32 @@ user_grid_responses = {}
 
 st.subheader("🔲 शब्द पहेली ग्रिड (Fill the Grid)")
 
-# Render the matrix rows safely
 for r in range(GRID_SIZE):
     cols = st.columns(GRID_SIZE)
     for c in range(GRID_SIZE):
         cell_key = f"cell_{r}_{c}"
 
+        # Look up clue numbers starting at this coordinate
+        match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
+        label = ",".join([str(x['id']) for x in match]) if match else " "
+
         with cols[c]:
             if cell_key not in playable_cells:
-                # Black cells match the app background color flawlessly to stay hidden
-                st.markdown('<div class="mobile-black-box"></div>', unsafe_allow_html=True)
+                # Render locked black cells as disabled input fields to maintain alignment
+                st.text_input(
+                    label=" ",
+                    value="",
+                    key=f"blk_{r}_{c}",
+                    disabled=True,
+                    label_visibility="visible"
+                )
             else:
-                match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
-                label = ",".join([str(x['id']) for x in match]) if match else " "
-
+                # Render active playable input text fields
                 user_grid_responses[cell_key] = st.text_input(
                     label=label,
                     max_chars=3,
                     key=f"p_{target_puzzle_id}_{r}_{c}",
-                    label_visibility="visible" if match else "hidden"
+                    label_visibility="visible"
                 ).strip()
 
 st.markdown("---")
