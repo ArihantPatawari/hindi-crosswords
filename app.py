@@ -23,6 +23,9 @@ st.set_page_config(page_title="शब्द पहेली प्रतिय�
 # =====================================================================
 # 📱 RESPONSIVE NATIVE SYMMETRIC GRID CSS OVERRIDES
 # =====================================================================
+# =====================================================================
+# 📱 RE-ENGINEERED ultra-COMPACT SYMMETRIC GRID CSS OVERRIDES
+# =====================================================================
 st.markdown("""
     <style>
     /* 1. Prevent native column stacking on mobile viewports */
@@ -32,56 +35,57 @@ st.markdown("""
         flex-wrap: nowrap !important;
         justify-content: center !important;
         align-items: flex-start !important;
-        gap: 2px !important;
+        gap: 1px !important; /* Tightened gap to shrink overall grid size */
         width: 100% !important;
     }
 
-    /* 2. Enforce exact matching widths across columns */
+    /* 2. CRITICAL FIX: Make the grid smaller on mobile */
     div[data-testid="column"] {
         flex: 1 1 0% !important;
-        min-width: 20px !important;
-        max-width: 34px !important;
+        min-width: 15px !important;  /* Reduced from 20px to compress width */
+        max-width: 24px !important;  /* Capped tighter from 34px to make it smaller */
     }
 
-    /* 3. Style active input cells into clean square units */
+    /* 3. Compress active input cell dimension properties */
     input {
         text-align: center !important;
         font-weight: bold !important;
-        font-size: 14px !important;
+        font-size: 12px !important; /* Slightly smaller font for smaller boxes */
         padding: 0px !important;
-        height: 28px !important;
+        height: 24px !important;    /* Match height with new narrower width */
         width: 100% !important;
         background-color: #262730 !important;
         color: white !important;
         border: 1px solid #464855 !important;
-        border-radius: 4px !important;
+        border-radius: 3px !important;
     }
     input:focus {
         border-color: #ff4b4b !important;
     }
 
-    /* 4. Style disabled cells to render as solid black blocks */
+    /* 4. SHOW ONLY THE CELLS THAT NEED TO BE FILLED (Invisible Dead Cells) */
     input:disabled {
-        background-color: #0e1117 !important;
-        color: #0e1117 !important;
-        border: 1px solid #1c1e24 !important;
-        cursor: not-allowed !important;
+        background-color: transparent !important;
+        color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        pointer-events: none !important;
+        cursor: default !important;
     }
 
-    /* 5. Center and align clue number labels above cells */
+    /* 5. Center and shrink clue number labels above cells tightly */
     label[data-testid="stWidgetLabel"] {
-        font-size: 8px !important;
+        font-size: 7px !important; /* Scaled down for the ultra-compact layout */
         font-weight: bold !important;
         color: #ff4b4b !important;
-        margin-bottom: -10px !important;
+        margin-bottom: -12px !important;
         text-align: center !important;
         display: block !important;
-        height: 12px !important;
-        line-height: 12px !important;
+        height: 10px !important;
+        line-height: 10px !important;
     }
     </style>
 """, unsafe_allow_html=True)
-
 
 # =====================================================================
 # 📋 ROUTING & METADATA LOADER
@@ -132,7 +136,7 @@ for c in clues:
 st.markdown("---")
 
 # =====================================================================
-# 🔲 THE INTERLOCKING SYMMETRIC CROSSWORD MATRIX PLAYGROUND
+# 🔲 THE INTERLOCKING RE-ENGINEERED COMPACT MATRIX PLAYGROUND
 # =====================================================================
 matrix_df = pd.read_csv(SHEET_BASE + "AnswersMatrix")
 active_matrix = matrix_df[matrix_df['PuzzleID'].astype(str) == target_puzzle_id]
@@ -154,7 +158,7 @@ for r in range(GRID_SIZE):
 
         with cols[c]:
             if cell_key not in playable_cells:
-                # Render locked black cells as disabled input fields to maintain alignment
+                # Render hidden locked cells to maintain structure without displaying boundaries
                 st.text_input(
                     label=" ",
                     value="",
@@ -163,7 +167,7 @@ for r in range(GRID_SIZE):
                     label_visibility="visible"
                 )
             else:
-                # Render active playable input text fields
+                # Render the clean visible interactive puzzle inputs
                 user_grid_responses[cell_key] = st.text_input(
                     label=label,
                     max_chars=3,
