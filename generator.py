@@ -239,45 +239,103 @@ def create_automatic_puzzle(pdf_path, book_title):
             if i >= 8: break
             text += page.extract_text() or ""
 
-
+    # Updated prompt requesting 5-7 intersecting Hindi keywords and validation loop
     prompt = f"""
-    Analyze the text. Extract 4 unique keywords in pure Hindi Devanagari script (no spaces).
-    Create a crossword clue for each in Hindi.
-    Output strictly as a valid JSON array without markdown blocks:
-    [
-        {{"word": "इतिहास", "clue": "पुरानी घटनाओं का अध्ययन।"}},
-        {{"word": "नायक", "clue": "कहानी का मुख्य पात्र।"}}
-    ]
+    Analyze the text. Extract exactly 5 to 7 unique keywords in pure Hindi Devanagari script (no spaces, 2 to 5 letters long).
+    CRITICAL: Select words that share common characters to form an interlocking crossword grid.
+    Create a descriptive crossword clue for each word in Hindi.
     Text: {text[:4000]}
     """
+
+    response_schema = {
+        "type": "ARRAY",
+        "items": {
+            "type": "OBJECT",
+            "properties": {
+                "word": {"type": "STRING"},
+                "clue": {"type": "STRING"}
+            },
+            "required": ["word", "clue"]
+        }
+    }
+
+    max_attempts = 3
+    word_pairs = []
+    engine = None
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = client.models.generate_content(
+                model='gemini-3.6-flash',
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_schema": response_schema,
+                    "temperature": 0.4
+                }
+            )
+
+            clean_json = response.text.strip().replace("```json", "").replace("```", "").strip()
+            word_pairs = json.loads(clean_json)
+
+            engine = ProperCrosswordGenerator(size=14)
+            engine.build_interlocking_matrix(word_pairs)
+
+            if len(engine.placed_words) >= 4:
+                break
+        except Exception:
+            if attempt == max_attempts:
+                response = client.models.generate_content(
+                    model='gemini-3.6-pro',
+                    contents=prompt,
+                    config={"response_mime_type": "application/json", "response_schema": response_schema,
+                            "temperature": 0.3}
+                )
+                word_pairs = json.loads(response.text.strip().replace("```json", "").replace("```", "").strip())
+                engine = ProperCrosswordGenerator(size=14)
+                engine.build_interlocking_matrix(word_pairs)
+
+    if not engine or len(engine.placed_words) < 4:
+        return
+
+    # prompt = f"""
+    # Analyze the text. Extract 4 unique keywords in pure Hindi Devanagari script (no spaces).
+    # Create a crossword clue for each in Hindi.
+    # Output strictly as a valid JSON array without markdown blocks:
+    # [
+    #     {{"word": "इतिहास", "clue": "पुरानी घटनाओं का अध्ययन।"}},
+    #     {{"word": "नायक", "clue": "कहानी का मुख्य पात्र।"}}
+    # ]
+    # Text: {text[:4000]}
+    # """
     # response = client.models.generate_content(
     #     model='gemini-3.8-flash', #'gemini-flash-latest',  # Highly recommended current stable flash model
     #     contents=prompt,
     # )
-
-    try:
-        # First attempt with the target model
-        response = client.models.generate_content(
-            model='gemini-3.6-flash',
-            contents=prompt,
-        )
-    except errors.ServerError as e:
-        if "503" in str(e):
-            print("⚠️ Model busy! Falling back to backup model...")
-            # Fallback option if primary model has high demand spikes
-            response = client.models.generate_content(
-                model='gemini-3.6-pro',
-                contents=prompt,
-            )
-        else:
-            raise e
-
-    clean_json = response.text.replace("```json", "").replace("```", "").strip()
-    word_pairs = json.loads(clean_json)
+    #
+    # try:
+    #     # First attempt with the target model
+    #     response = client.models.generate_content(
+    #         model='gemini-3.6-flash',
+    #         contents=prompt,
+    #     )
+    # except errors.ServerError as e:
+    #     if "503" in str(e):
+    #         print("⚠️ Model busy! Falling back to backup model...")
+    #         # Fallback option if primary model has high demand spikes
+    #         response = client.models.generate_content(
+    #             model='gemini-3.6-pro',
+    #             contents=prompt,
+    #         )
+    #     else:
+    #         raise e
+    #
+    # clean_json = response.text.replace("```json", "").replace("```", "").strip()
+    # word_pairs = json.loads(clean_json)
 
     # Calculate Proper Interlocking Layout
-    engine = ProperCrosswordGenerator(size=14)
-    engine.build_interlocking_matrix(word_pairs)
+    # engine = ProperCrosswordGenerator(size=14)
+    # engine.build_interlocking_matrix(word_pairs)
 
     # Sync puzzle settings directly to Google Sheet registry tab
     requests.post(WEB_APP_URL, data={"sheetName": "PuzzlesRegistry", "rowData": json.dumps(
