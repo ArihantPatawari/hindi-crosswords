@@ -16,9 +16,83 @@ SHEET_BASE = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?t
 
 st.set_page_config(page_title="शब्द पहेली प्रतियोगिता", layout="centered")
 
-# Read URL browser parameters
-url_parameters = st.query_params
 
+# =====================================================================
+# 📱 DEFINITIVE MOBILE & LAPTOP RESPONSIVE GLOBAL CSS
+# =====================================================================
+st.markdown("""
+    <style>
+    /* 1. Main Page Wrapper Styling */
+    .main .block-container {
+        padding-top: 2rem !important;
+        max-width: 600px !important; /* Perfect width reading for both mobile and laptop views */
+    }
+
+    /* 2. Style the 14x14 Crossword Blocks exclusively (Ignores other components) */
+    .element-container:has(input[key^="p_"]) {
+        min-width: 28px !important;
+    }
+
+    /* Target rows containing the grid inputs to prevent vertical stacking */
+    div[data-testid="stHorizontalBlock"]:has(input[key^="p_"]) {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        justify-content: center !important;
+        gap: 3px !important;
+        width: 100% !important;
+        overflow: visible !important;
+    }
+
+    /* Enforce strict square cells across columns inside the crossword row blocks */
+    div[data-testid="stHorizontalBlock"]:has(input[key^="p_"]) div[data-testid="column"] {
+        flex: 1 1 0% !important;
+        min-width: 28px !important;
+        max-width: 38px !important;
+    }
+
+    /* 3. Input Text Box Sizing and Font Uniformity */
+    input {
+        text-align: center !important;
+        font-weight: bold !important;
+        font-size: 16px !important;
+        padding: 0px !important;
+        height: 34px !important;
+        background-color: #262730 !important;
+        color: white !important;
+        border: 1px solid #464855 !important;
+        border-radius: 4px !important;
+    }
+    input:focus {
+        border-color: #ff4b4b !important;
+    }
+
+    /* 4. Clue Labels Styling right on top of cells */
+    label[data-testid="stWidgetLabel"] {
+        font-size: 9px !important;
+        font-weight: bold !important;
+        color: #ff4b4b !important;
+        margin-bottom: -8px !important;
+        text-align: center !important;
+        display: block !important;
+    }
+
+    /* 5. Clean Filled Locked Black Cells (No hollow boxes) */
+    .mobile-black-box {
+        background-color: #0e1117;
+        height: 34px;
+        width: 100%;
+        border-radius: 4px;
+        border: 1px solid #1c1e24;
+        margin-top: 14px; /* Perfectly counter-aligns with labeled text input slots */
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# =====================================================================
+# 📋 ROUTING & METADATA LOADER
+# =====================================================================
+url_parameters = st.query_params
 if "puzzle" not in url_parameters:
     st.title("⚠️ अमान्य लिंक (Invalid Link)")
     st.error("कृपया सही पहेली लिंक का उपयोग करें (उदा. ?puzzle=1)")
@@ -26,11 +100,9 @@ if "puzzle" not in url_parameters:
 
 target_puzzle_id = str(url_parameters["puzzle"])
 
-# Fetch puzzle configs from Google Sheets
 try:
     registry_df = pd.read_csv(SHEET_BASE + "PuzzlesRegistry")
     puzzle_row = registry_df[registry_df['PuzzleID'].astype(str) == target_puzzle_id]
-    print(puzzle_row)
 except:
     puzzle_row = pd.DataFrame()
 
@@ -39,176 +111,74 @@ if puzzle_row.empty:
     st.warning(f"पहेली संख्या {target_puzzle_id} अभी लाइव नहीं की गई है।")
     st.stop()
 
-# NEW UPDATED CODE (Type-Safe Fix)
-p_meta = puzzle_row.iloc[0] # Explicitly fetch the first matching row entry
-st.title(f"🧩 हिंदी शब्द पहेली — {str(p_meta['BookTitle'])}")
-player_name = st.text_input("अपना नाम दर्ज करें:")
+# Force safe text conversions out
+p_meta = puzzle_row.iloc[0]
+st.title(f"🧩 हिंदी शब्द पहेली प्रतियोगिता")
+st.subheader(f"📖 विषय: {str(p_meta['BookTitle'])}")
 
-# st.title(f"🧩 हिंदी शब्द पहेली — {p_meta['BookTitle']}")
-st.write("🏁 *प्रतियोगिता लाइव है! सबसे पहले सही उत्तर सबमिट करने वाले खिलाड़ी विजेता बनेंगे।*")
+player_name = st.text_input("अपना नाम दर्ज करें (Enter Your Name):", placeholder="जैसे: अमित कुमार")
+st.markdown("---")
 
-# player_name = st.text_input("अपना नाम दर्ज करें:")
+# =====================================================================
+# 📋 CARD VIEW CLUES DISPLAY PANEL (FLAWLESS LAPTOP & MOBILE SCALING)
+# =====================================================================
+st.subheader("📋 संकेत (Crossword Clues)")
+clues = json.loads(str(p_meta['CluesJSON']))
 
-# clues = json.loads(p_meta['CluesJSON'])
+# Group clues nicely into pure UI cards
+for c in clues:
+    dtype = "बाएँ से दाएँ (Horizontal)" if c['dir'] == 'H' else "ऊपर से नीचे (Vertical)"
+    st.markdown(f"""
+        <div style="background-color:#1e222b; padding:12px; border-radius:8px; border-left: 5px solid #ff4b4b; margin-bottom:8px;">
+            <span style="color:#ff4b4b; font-weight:bold;"># {c['id']} [{dtype}]</span><br>
+            <span style="color:white; font-size:15px;">{c['clue']}</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-clues_string = str(p_meta['CluesJSON'])
-clues = json.loads(clues_string)
+st.markdown("---")
 
+# =====================================================================
+# 🔲 THE INTERLOCKING CROSSWORD MATRIX PLAYGROUND
+# =====================================================================
 matrix_df = pd.read_csv(SHEET_BASE + "AnswersMatrix")
-
-
 active_matrix = matrix_df[matrix_df['PuzzleID'].astype(str) == target_puzzle_id]
 playable_cells = set(active_matrix['CellKey'].tolist())
 
-# Render Crossword Interface Layout
-col1, col2 = st.columns(2)
-with col2:
-    st.subheader("📋 संकेत (Clues)")
-    for c in clues:
-        dtype = "Horizontal" if c['dir'] == 'H' else "Vertical"
-        st.info(f"**#{c['id']} [{dtype}]:** {c['clue']}")
-
-#
-# # ==========================================
-# # 🔲 RENDER THE PLAYABLE GRID (FIXED FOR 14x14)
-# # ==========================================
-# GRID_SIZE = 14  # <-- CRITICAL FIX: Match the generator's grid size perfectly
-#
-# with col1:
-#     st.subheader("🔲 ग्रिड (Grid)")
-#     user_grid_responses = {}
-#
-#     # Loop through all 14 rows and 14 columns
-#     for r in range(GRID_SIZE):
-#         cols = st.columns(GRID_SIZE)
-#         for c in range(GRID_SIZE):
-#             cell_key = f"cell_{r}_{c}"
-#             with cols[c]:
-#                 if cell_key not in playable_cells:
-#                     # Dark placeholder box for empty cells
-#                     st.markdown(
-#                         "<div style='background-color:#111; height:32px; border-radius:3px; margin-bottom:2px;'></div>",
-#                         unsafe_allow_html=True)
-#                 else:
-#                     # Look up if a clue line begins exactly on this boundary box
-#                     # Explicitly convert to integers to ensure an exact data match
-#                     # match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
-#                     #
-#                     # if match:
-#                     #     label = ",".join([str(x['id']) for x in match])
-#                     # else:
-#                     #     label = " "
-#                     #
-#                     # user_grid_responses[cell_key] = st.text_input(
-#                     #     label=label,
-#                     #     max_chars=1,
-#                     #     key=f"p_{target_puzzle_id}_{r}_{c}"
-#                     # ).strip()
-#
-#                     # =====================================================================
-#                     # SPECIFIC FIXED GRAPHEME CELL INPUT WINDOW
-#                     # =====================================================================
-#                     match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
-#                     label = ",".join([str(x['id']) for x in match]) if match else " "
-#
-#                     # 1. Expand max_chars to 3 to accommodate Devanagari matras/halants cleanly
-#                     user_grid_responses[cell_key] = cols[c].text_input(
-#                         label=label,
-#                         max_chars=3,  # <-- Change from 1 to 3 to support composite clusters
-#                         key=f"p_{target_puzzle_id}_{r}_{c}"
-#                     ).strip()
-
-# =====================================================================
-# 📱 MOBILE-OPTIMIZED CUSTOM UI STYLING (Add at the very top of app.py)
-# =====================================================================
-# =====================================================================
-# 📱 MOBILE-OPTIMIZED STYLING FOR NATIVE STREAMLIT WIDGETS
-# =====================================================================
-st.markdown("""
-    <style>
-    /* Prevent the main page layout from stretching awkwardly on mobile */
-    [data-testid="stHorizontalBlock"] {
-        gap: 4px !important;
-    }
-
-    /* Target every grid cell box to make it perfectly square and responsive */
-    div[data-testid="column"] {
-        width: 100% !important;
-        flex: 1 1 0% !important;
-        min-width: 26px !important; /* Prevents columns from shrinking into slits on mobile */
-    }
-
-    /* Style the input fields to center the text and remove excess padding */
-    input {
-        text-align: center !important;
-        font-weight: bold !important;
-        font-size: 15px !important;
-        padding: 0px !important;
-        height: 32px !important;
-        border-radius: 4px !important;
-    }
-
-    /* Shrink and center the tiny clue numbers above the input cells */
-    label[data-testid="stWidgetLabel"] {
-        font-size: 10px !important;
-        color: #aaaaaa !important;
-        margin-bottom: -6px !important;
-        text-align: center !important;
-        display: block !important;
-    }
-
-    /* Styling for empty locked black grid cells */
-    .mobile-black-box {
-        background-color: #1a1a1a;
-        height: 32px;
-        width: 100%;
-        border-radius: 4px;
-        border: 1px solid #2b2b2b;
-        margin-top: 14px; /* Perfectly aligns black boxes with the text inputs next to them */
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# =====================================================================
-# 🔲 RENDER THE PLAYABLE GRID (BUG-FREE & RESPONSIVE)
-# =====================================================================
 GRID_SIZE = 14
 user_grid_responses = {}
 
-with col1:
-    st.subheader("🔲 ग्रिड (Puzzle Grid)")
+st.subheader("🔲 शब्द पहेली ग्रिड (Fill the Grid)")
 
-    # Loop through each row
-    for r in range(GRID_SIZE):
-        # Create exactly 14 native columns side-by-side per row
-        cols = st.columns(GRID_SIZE)
+# Render the matrix rows safely
+for r in range(GRID_SIZE):
+    cols = st.columns(GRID_SIZE)
+    for c in range(GRID_SIZE):
+        cell_key = f"cell_{r}_{c}"
 
-        for c in range(GRID_SIZE):
-            cell_key = f"cell_{r}_{c}"
+        with cols[c]:
+            if cell_key not in playable_cells:
+                # Black cells match the app background color flawlessly to stay hidden
+                st.markdown('<div class="mobile-black-box"></div>', unsafe_allow_html=True)
+            else:
+                match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
+                label = ",".join([str(x['id']) for x in match]) if match else " "
 
-            with cols[c]:
-                if cell_key not in playable_cells:
-                    # Render empty black cells safely using standard HTML inside the column block
-                    st.markdown('<div class="mobile-black-box"></div>', unsafe_allow_html=True)
-                else:
-                    # Look up clue numbers starting at this coordinate
-                    match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
-                    label = ",".join([str(x['id']) for x in match]) if match else " "
+                user_grid_responses[cell_key] = st.text_input(
+                    label=label,
+                    max_chars=3,
+                    key=f"p_{target_puzzle_id}_{r}_{c}",
+                    label_visibility="visible" if match else "hidden"
+                ).strip()
 
-                    # Render the native Streamlit text input widget safely
-                    user_grid_responses[cell_key] = st.text_input(
-                        label=label,
-                        max_chars=3,
-                        key=f"p_{target_puzzle_id}_{r}_{c}",
-                        label_visibility="visible" if match else "hidden"
-                    ).strip()
+st.markdown("---")
 
-# --- SUBMISSION LOGIC ---
-if st.button("📤 अपना उत्तर सबमिट करें", type="primary", use_container_width=True):
+# =====================================================================
+# 📤 LOGGING SUBMISSIONS
+# =====================================================================
+if st.button("📤 अपना उत्तर सबमिट करें (Submit Answers)", type="primary", use_container_width=True):
     if not player_name.strip():
-        st.error("⚠️ कृपया जारी रखने के लिए अपना नाम लिखें!")
+        st.error("⚠️ कृपया सबमिट करने से पहले अपना नाम लिखें!")
     else:
-        # Calculate Score Matrix
         correct_cells = 0
         for _, row in active_matrix.iterrows():
             if user_grid_responses.get(row['CellKey'], "") == row['CorrectLetter']:
@@ -216,18 +186,14 @@ if st.button("📤 अपना उत्तर सबमिट करें", t
 
         accuracy_pct = int((correct_cells / len(active_matrix)) * 100)
 
-        # Create Payload row data array (without page time tracking)
         payload = [
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # High precision click-timestamp
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             target_puzzle_id,
             player_name,
             f"{correct_cells}/{len(active_matrix)}",
             f"{accuracy_pct}%"
         ]
-
-        # Post directly to Google Sheet Submissions tab
         requests.post(WEB_APP_URL, data={"sheetName": "Submissions", "rowData": json.dumps(payload)})
 
         st.balloons()
-        st.success("🎉 आपका उत्तर सफलतापूर्वक सबमिट कर दिया गया है!")
-        st.info("📊 विजेता का निर्णय उच्चतम स्कोर और सबमिशन के समय (First Come, First Served) के आधार पर होगा।")
+        st.success(f"🎉 बधाई हो {player_name}! आपका उत्तर सबमिट हो गया है।")
