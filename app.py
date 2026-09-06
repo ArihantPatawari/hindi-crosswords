@@ -121,55 +121,56 @@ with col2:
 # =====================================================================
 # 📱 MOBILE-OPTIMIZED CUSTOM UI STYLING (Add at the very top of app.py)
 # =====================================================================
+# =====================================================================
+# 📱 MOBILE-OPTIMIZED STYLING FOR NATIVE STREAMLIT WIDGETS
+# =====================================================================
 st.markdown("""
     <style>
-    /* Force container to allow horizontal scrolling on tiny phone screens */
-    .crossword-container {
-        display: flex;
-        flex-direction: column;
-        overflow-x: auto;
-        padding: 10px 0;
-        margin-bottom: 20px;
+    /* Prevent the main page layout from stretching awkwardly on mobile */
+    [data-testid="stHorizontalBlock"] {
+        gap: 4px !important;
     }
-    /* Enforce a flawless 14x14 grid format that never breaks alignment */
-    .crossword-grid-row {
-        display: grid;
-        grid-template-columns: repeat(14, minmax(28px, 1fr));
-        gap: 3px;
-        width: 100%;
-        min-width: 420px; /* Ensures it looks like a real grid on narrow devices */
+
+    /* Target every grid cell box to make it perfectly square and responsive */
+    div[data-testid="column"] {
+        width: 100% !important;
+        flex: 1 1 0% !important;
+        min-width: 26px !important; /* Prevents columns from shrinking into slits on mobile */
     }
-    /* Styling for empty locked black grid cells */
-    .black-cell {
-        background-color: #111111;
-        aspect-ratio: 1 / 1;
-        border-radius: 4px;
-        border: 1px solid #222222;
-    }
-    /* Target the text input blocks inside Streamlit dynamically */
-    div[data-baseweb="input"] {
-        border-radius: 4px !important;
-    }
+
+    /* Style the input fields to center the text and remove excess padding */
     input {
         text-align: center !important;
         font-weight: bold !important;
-        font-size: 16px !important;
+        font-size: 15px !important;
         padding: 0px !important;
         height: 32px !important;
+        border-radius: 4px !important;
     }
-    /* Shrink the tiny clue labels above input fields to maximize layout space */
+
+    /* Shrink and center the tiny clue numbers above the input cells */
     label[data-testid="stWidgetLabel"] {
         font-size: 10px !important;
-        color: #888888 !important;
-        margin-bottom: -5px !important;
+        color: #aaaaaa !important;
+        margin-bottom: -6px !important;
         text-align: center !important;
         display: block !important;
+    }
+
+    /* Styling for empty locked black grid cells */
+    .mobile-black-box {
+        background-color: #1a1a1a;
+        height: 32px;
+        width: 100%;
+        border-radius: 4px;
+        border: 1px solid #2b2b2b;
+        margin-top: 14px; /* Perfectly aligns black boxes with the text inputs next to them */
     }
     </style>
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# 🔲 RENDER THE PLAYABLE GRID (RE-ENGINEERED FOR MOBILE RESPONSIVENESS)
+# 🔲 RENDER THE PLAYABLE GRID (BUG-FREE & RESPONSIVE)
 # =====================================================================
 GRID_SIZE = 14
 user_grid_responses = {}
@@ -177,38 +178,30 @@ user_grid_responses = {}
 with col1:
     st.subheader("🔲 ग्रिड (Puzzle Grid)")
 
-    # Open the structural scrolling container wrapper
-    st.markdown('<div class="crossword-container">', unsafe_allow_html=True)
-
+    # Loop through each row
     for r in range(GRID_SIZE):
-        # Open a strict CSS row grid container block
-        st.markdown('<div class="crossword-grid-row">', unsafe_allow_html=True)
+        # Create exactly 14 native columns side-by-side per row
+        cols = st.columns(GRID_SIZE)
 
         for c in range(GRID_SIZE):
             cell_key = f"cell_{r}_{c}"
 
-            if cell_key not in playable_cells:
-                # Render the black cells directly using fast, clean HTML
-                st.markdown('<div class="black-cell"></div>', unsafe_allow_html=True)
-            else:
-                # Find matching clue label configurations
-                match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
-                label = ",".join([str(x['id']) for x in match]) if match else " "
+            with cols[c]:
+                if cell_key not in playable_cells:
+                    # Render empty black cells safely using standard HTML inside the column block
+                    st.markdown('<div class="mobile-black-box"></div>', unsafe_allow_html=True)
+                else:
+                    # Look up clue numbers starting at this coordinate
+                    match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
+                    label = ",".join([str(x['id']) for x in match]) if match else " "
 
-                # Render the interactive active box cleanly inside the CSS grid
-                user_grid_responses[cell_key] = st.text_input(
-                    label=label,
-                    max_chars=3,
-                    key=f"p_{target_puzzle_id}_{r}_{c}",
-                    label_visibility="visible" if match else "hidden"
-                ).strip()
-
-        # Close the row grid block container element
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # Close the scrolling horizontal container element wrapper
-    st.markdown('</div>', unsafe_allow_html=True)
-
+                    # Render the native Streamlit text input widget safely
+                    user_grid_responses[cell_key] = st.text_input(
+                        label=label,
+                        max_chars=3,
+                        key=f"p_{target_puzzle_id}_{r}_{c}",
+                        label_visibility="visible" if match else "hidden"
+                    ).strip()
 
 # --- SUBMISSION LOGIC ---
 if st.button("📤 अपना उत्तर सबमिट करें", type="primary", use_container_width=True):
