@@ -18,74 +18,61 @@ st.set_page_config(page_title="शब्द पहेली प्रतिय�
 
 
 # =====================================================================
-# 📱 DEFINITIVE MOBILE & LAPTOP RESPONSIVE GLOBAL CSS
-# =====================================================================
-# =====================================================================
-# 📱 RESPONSIVE NATIVE SYMMETRIC GRID CSS OVERRIDES
-# =====================================================================
-# =====================================================================
-# 📱 RE-ENGINEERED ultra-COMPACT SYMMETRIC GRID CSS OVERRIDES
+# 📱 DYNAMIC FLEXBOX WORD-BLOCK DESIGN OVERRIDES
 # =====================================================================
 st.markdown("""
     <style>
-    /* 1. Prevent native column stacking on mobile viewports */
+    /* 1. Eliminate the huge 14x14 grid footprint entirely */
     div[data-testid="stHorizontalBlock"] {
+        display: none !important; /* Disables standard Streamlit grid wrappers */
+    }
+
+    /* 2. Custom flex row styling exclusively for our text input tracks */
+    .crossword-flex-row {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: nowrap !important;
         justify-content: center !important;
-        align-items: flex-start !important;
-        gap: 1px !important; /* Tightened gap to shrink overall grid size */
+        align-items: center !important;
+        gap: 4px !important;
+        margin-bottom: 15px !important;
         width: 100% !important;
     }
 
-    /* 2. CRITICAL FIX: Make the grid smaller on mobile */
-    div[data-testid="column"] {
-        flex: 1 1 0% !important;
-        min-width: 15px !important;  /* Reduced from 20px to compress width */
-        max-width: 24px !important;  /* Capped tighter from 34px to make it smaller */
+    /* 3. Style only the playable text cells to render as solid square blocks */
+    .crossword-cell-wrapper {
+        width: 32px !important;
+        max-width: 32px !important;
     }
 
-    /* 3. Compress active input cell dimension properties */
     input {
         text-align: center !important;
         font-weight: bold !important;
-        font-size: 12px !important; /* Slightly smaller font for smaller boxes */
+        font-size: 16px !important;
         padding: 0px !important;
-        height: 24px !important;    /* Match height with new narrower width */
-        width: 100% !important;
+        height: 32px !important;
+        width: 32px !important;
         background-color: #262730 !important;
         color: white !important;
-        border: 1px solid #464855 !important;
-        border-radius: 3px !important;
+        border: 2px solid #464855 !important;
+        border-radius: 6px !important;
     }
     input:focus {
         border-color: #ff4b4b !important;
     }
 
-    /* 4. SHOW ONLY THE CELLS THAT NEED TO BE FILLED (Invisible Dead Cells) */
-    input:disabled {
-        background-color: transparent !important;
-        color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        pointer-events: none !important;
-        cursor: default !important;
-    }
-
-    /* 5. Center and shrink clue number labels above cells tightly */
+    /* 4. Style clue indices resting directly over active squares */
     label[data-testid="stWidgetLabel"] {
-        font-size: 7px !important; /* Scaled down for the ultra-compact layout */
+        font-size: 9px !important;
         font-weight: bold !important;
         color: #ff4b4b !important;
-        margin-bottom: -12px !important;
+        margin-bottom: -6px !important;
         text-align: center !important;
         display: block !important;
-        height: 10px !important;
-        line-height: 10px !important;
     }
     </style>
 """, unsafe_allow_html=True)
+
 
 # =====================================================================
 # 📋 ROUTING & METADATA LOADER
@@ -136,44 +123,55 @@ for c in clues:
 st.markdown("---")
 
 # =====================================================================
-# 🔲 THE INTERLOCKING RE-ENGINEERED COMPACT MATRIX PLAYGROUND
+# 🛠️ DYNAMIC STRUCTURAL EXTRACTION ENGINE (ZERO DEAD BLOCKS RENDERING)
 # =====================================================================
 matrix_df = pd.read_csv(SHEET_BASE + "AnswersMatrix")
 active_matrix = matrix_df[matrix_df['PuzzleID'].astype(str) == target_puzzle_id]
-playable_cells = set(active_matrix['CellKey'].tolist())
+clues = json.loads(str(p_meta['CluesJSON']))
 
-GRID_SIZE = 14
 user_grid_responses = {}
 
-st.subheader("🔲 शब्द पहेली ग्रिड (Fill the Grid)")
+st.subheader("🔲 शब्द पहेली (Fill the Words)")
 
-for r in range(GRID_SIZE):
-    cols = st.columns(GRID_SIZE)
-    for c in range(GRID_SIZE):
-        cell_key = f"cell_{r}_{c}"
+# Iterate over the generated puzzle configurations directly
+for item in clues:
+    clue_id = item['id']
+    direction = item['dir']
+    start_r = int(item['row'])
+    start_c = int(item['col'])
 
-        # Look up clue numbers starting at this coordinate
-        match = [x for x in clues if int(x['row']) == r and int(x['col']) == c]
-        label = ",".join([str(x['id']) for x in match]) if match else " "
+    # 1. Break the Hindi keyword into clean Devanagari cluster lengths natively
+    letters_count = len(list(grapheme.graphemes(item['word'])))
 
-        with cols[c]:
-            if cell_key not in playable_cells:
-                # Render hidden locked cells to maintain structure without displaying boundaries
-                st.text_input(
-                    label=" ",
-                    value="",
-                    key=f"blk_{r}_{c}",
-                    disabled=True,
-                    label_visibility="visible"
-                )
-            else:
-                # Render the clean visible interactive puzzle inputs
-                user_grid_responses[cell_key] = st.text_input(
-                    label=label,
-                    max_chars=3,
-                    key=f"p_{target_puzzle_id}_{r}_{c}",
-                    label_visibility="visible"
-                ).strip()
+    dtype_label = "लेटे हुए (Horizontal)" if direction == 'H' else "खड़े (Vertical)"
+    st.caption(f"**संकेत #{clue_id} [{dtype_label}]:** {item['clue']}")
+
+    # 2. Open a custom responsive horizontal flex track wrapper natively
+    st.markdown('<div class="crossword-flex-row">', unsafe_allow_html=True)
+
+    # Render ONLY the exact letter spaces needed for this word block
+    for i in range(letters_count):
+        curr_r = start_r if direction == 'H' else start_r + i
+        curr_c = start_c + i if direction == 'H' else start_c
+        cell_key = f"cell_{curr_r}_{curr_c}"
+
+        # Only render a unique input widget if it hasn't been drawn yet
+        if cell_key not in user_grid_responses:
+            # Set the indicator label to show on the starting boundary square
+            box_label = str(clue_id) if i == 0 else " "
+
+            # Encapsulate directly within our customized CSS styling class tags
+            st.markdown('<div class="crossword-cell-wrapper">', unsafe_allow_html=True)
+
+            user_grid_responses[cell_key] = st.text_input(
+                label=box_label,
+                max_chars=3,
+                key=f"cell_input_{target_puzzle_id}_{curr_r}_{curr_c}"
+            ).strip()
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 
